@@ -1,5 +1,4 @@
 "use client";
-
 import "./global.css";
 import { usePathname } from "next/navigation";
 
@@ -17,7 +16,6 @@ export default function RootLayout({ children }) {
             <a href="/patients" className={pathname === "/patients" ? "active" : ""}>Patients</a>
             <a href="/appointments" className={pathname === "/appointments" ? "active" : ""}>Appointments</a>
             <a href="/clinical" className={pathname === "/clinical" ? "active" : ""}>Clinical</a>
-            {/* <a href="/billing" className={pathname === "/billing" ? "active" : ""}>Billing</a> */}
           </nav>
         </header>
 
