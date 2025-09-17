@@ -7,46 +7,45 @@ export default function Patients() {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
-
   const [newPatientName, setNewPatientName] = useState("");
 
   async function search() {
     if (!q.trim()) return setErr("Enter patient name");
     setErr(""); setLoading(true);
     try {
-      const data = await proxyRequest(`fhir/Patient?name=${encodeURIComponent(q)}`);
+      const data = await proxyRequest("Patient?name=" + encodeURIComponent(q));
       setPatients(data.entry || []);
     } catch (e) { setErr(e.message || "Failed"); }
     finally { setLoading(false); }
   }
 
   async function addPatient() {
-    if (!newPatientName.trim()) return setErr("Enter patient name to add");
+    if (!newPatientName.trim()) return setErr("Enter patient name");
     setErr(""); setLoading(true);
     try {
-      const newPatient = { name: [{ text: newPatientName }] };
-      const data = await proxyRequest("fhir/Patient", "POST", newPatient);
+      const newP = { resourceType: "Patient", name: [{ text: newPatientName }] };
+      const data = await proxyRequest("Patient", "POST", newP);
       setPatients(prev => [...prev, { resource: data }]);
       setNewPatientName("");
-    } catch (e) { setErr(e.message || "Failed to add patient"); }
+    } catch (e) { setErr(e.message || "Failed"); }
     finally { setLoading(false); }
   }
 
   async function updatePatient(id) {
-    const updatedName = prompt("Enter new patient name");
-    if (!updatedName) return;
+    const name = prompt("Enter new patient name");
+    if (!name) return;
     try {
-      const data = await proxyRequest(`fhir/Patient/${id}`, "PUT", { name: [{ text: updatedName }] });
+      const data = await proxyRequest("Patient/" + id, "PUT", { resourceType: "Patient", id, name: [{ text: name }] });
       setPatients(prev => prev.map(p => p.resource.id === id ? { resource: data } : p));
-    } catch (e) { setErr(e.message || "Failed to update"); }
+    } catch (e) { setErr(e.message || "Failed"); }
   }
 
   async function deletePatient(id) {
-    if (!confirm("Are you sure to delete this patient?")) return;
+    if (!confirm("Delete this patient?")) return;
     try {
-      await proxyRequest(`fhir/Patient/${id}`, "DELETE");
+      await proxyRequest("Patient/" + id, "DELETE");
       setPatients(prev => prev.filter(p => p.resource.id !== id));
-    } catch (e) { setErr(e.message || "Failed to delete"); }
+    } catch (e) { setErr(e.message || "Failed"); }
   }
 
   return (
@@ -67,13 +66,13 @@ export default function Patients() {
       {patients.length === 0 && !loading && !err && <div className="empty">No results yet.</div>}
 
       {patients.map(p => {
-        const patient = p.resource;
+        const pat = p.resource;
         return (
-          <div key={patient.id} className="card">
-            <div><b>Name:</b> {patient.name?.[0]?.text || "Unnamed"}</div>
-            <div><b>ID:</b> {patient.id}</div>
-            <button onClick={() => updatePatient(patient.id)}>Update</button>
-            <button onClick={() => deletePatient(patient.id)}>Delete</button>
+          <div key={pat.id} className="card">
+            <div><b>Name:</b> {pat.name?.[0]?.text || "Unnamed"}</div>
+            <div><b>ID:</b> {pat.id}</div>
+            <button onClick={() => updatePatient(pat.id)}>Update</button>
+            <button onClick={() => deletePatient(pat.id)}>Delete</button>
           </div>
         );
       })}

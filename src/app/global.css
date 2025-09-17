@@ -106,20 +106,6 @@ footer {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
 }
 
-.button-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.input-button-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
 button {
   background: var(--primary);
   color: #fff;
@@ -184,6 +170,20 @@ button.small {
   margin-top: 1rem;
 }
 
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.input-button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -196,4 +196,63 @@ button.small {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto;
+}
+
+/* --- HOMEPAGE SPECIFIC STYLES --- */
+.home-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+.home-card {
+  background: var(--primary);
+  color: #fff;
+  padding: 2rem 2.5rem;
+  border-radius: var(--radius);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  min-width: 220px;
+}
+
+.home-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.home-card h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.home-card p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #f0f0f0;
+}
+
+.quick-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.quick-actions button {
+  padding: 0.8rem 1.5rem;
+  border-radius: var(--radius); 
+  border: none;
+  cursor: pointer;
+  transition: 0.25s;
+  background: var(--primary);
+  color: #fff;
+}
+
+.quick-actions button:hover {
+  background: var(--primary-hover);
+  transform: scale(1.05);
 }

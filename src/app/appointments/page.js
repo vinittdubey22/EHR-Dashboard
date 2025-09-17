@@ -1,88 +1,128 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { proxyRequest } from "../../lib/apiClient";
 
 export default function Appointments() {
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [patients, setPatients] = useState([]);
+  const [practitioners, setPractitioners] = useState([]);
+  const [searchName, setSearchName] = useState("");
+  const [patientId, setPatientId] = useState("");
+  const [practitionerId, setPractitionerId] = useState("");
+  const [date, setDate] = useState("");
+  const [reason, setReason] = useState("");
+  const [apptId, setApptId] = useState("");
+  const [status, setStatus] = useState("");
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [newPatientId, setNewPatientId] = useState("");
-  const [newStart, setNewStart] = useState("");
-  const [newEnd, setNewEnd] = useState("");
+  useEffect(() => {
+    async function loadDoctors() {
+      try {
+        const res = await proxyRequest("Practitioner");
+        setPractitioners(res.entry?.map(e => e.resource) || []);
+      } catch {
+        setErr("error loading doctors");
+      }
+    }
+    loadDoctors();
+  }, []);
 
-  async function loadAppointments() {
-    setLoading(true); setErr("");
-    try {
-      const data = await proxyRequest("fhir/Appointment");
-      setAppointments(data.entry || []);
-    } catch (e) { setErr(e.message || "Failed to load"); }
-    finally { setLoading(false); }
-  }
-
-  async function bookAppointment() {
-    if (!newPatientId || !newStart || !newEnd) return setErr("Fill all fields");
+  async function searchPatient() {
+    setPatientId("");
+    if (!searchName.trim()) return setErr("enter name");
     setErr(""); setLoading(true);
     try {
-      const newAppointment = {
-        participant: [{ actor: { reference: `Patient/${newPatientId}` } }],
-        start: newStart,
-        end: newEnd
+      const res = await proxyRequest(`Patient?name=${encodeURIComponent(searchName)}`);
+      const found = res.entry?.map(e => e.resource) || [];
+      setPatients(found);
+      if (found.length === 1) setPatientId(found[0].id);
+    } catch {
+      setErr("error searching");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function addPatient() {
+    if (!searchName.trim()) return setErr("enter name");
+    setErr(""); setLoading(true);
+    try {
+      const newP = { resourceType: "Patient", name: [{ text: searchName }] };
+      const res = await proxyRequest("Patient", "POST", newP);
+      setPatients([res]);
+      setPatientId(res.id);
+    } catch {
+      setErr("error adding");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function book(e) {
+    e.preventDefault();
+    setErr(""); setApptId(""); setStatus("");
+    if (!patientId || !practitionerId || !date || !reason) return setErr("fill all fields");
+    setLoading(true);
+    try {
+      const startDate = new Date(date);
+      const endDate = new Date(startDate.getTime() + 30 * 60000);
+      const appt = {
+        resourceType: "Appointment",
+        status: "booked",
+        description: reason,
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+        participant: [
+          { actor: { reference: `Patient/${patientId}` }, status: "accepted" },
+          { actor: { reference: `Practitioner/${practitionerId}` }, status: "accepted" }
+        ]
       };
-      const data = await proxyRequest("fhir/Appointment", "POST", newAppointment);
-      setAppointments(prev => [...prev, { resource: data }]);
-      setNewPatientId(""); setNewStart(""); setNewEnd("");
-    } catch (e) { setErr(e.message || "Failed to book"); }
-    finally { setLoading(false); }
-  }
-
-  async function rescheduleAppointment(id) {
-    const start = prompt("New start time");
-    const end = prompt("New end time");
-    if (!start || !end) return;
-    try {
-      const data = await proxyRequest(`fhir/Appointment/${id}`, "PUT", { start, end });
-      setAppointments(prev => prev.map(a => a.resource.id === id ? { resource: data } : a));
-    } catch (e) { setErr(e.message || "Failed to reschedule"); }
-  }
-
-  async function cancelAppointment(id) {
-    if (!confirm("Cancel this appointment?")) return;
-    try {
-      await proxyRequest(`fhir/Appointment/${id}`, "DELETE");
-      setAppointments(prev => prev.filter(a => a.resource.id !== id));
-    } catch (e) { setErr(e.message || "Failed to cancel"); }
+      const res = await proxyRequest("Appointment", "POST", appt);
+      setApptId(res.id);
+      setStatus(res.status);
+    } catch (e) {
+      setErr(e.message || "error booking");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div>
-      <h2>📅 Appointments</h2>
-
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        <input className="input" placeholder="Patient ID" value={newPatientId} onChange={e => setNewPatientId(e.target.value)} />
-        <input className="input" placeholder="Start time" value={newStart} onChange={e => setNewStart(e.target.value)} />
-        <input className="input" placeholder="End time" value={newEnd} onChange={e => setNewEnd(e.target.value)} />
-        <button onClick={bookAppointment} disabled={loading}>{loading ? "Booking..." : "Book"}</button>
+      <h2>Book Appointment</h2>
+      <div className="card" style={{ marginBottom: "1rem" }}>
+        <input className="input" placeholder="Enter Patient Name" value={searchName} onChange={e => setSearchName(e.target.value)} />
+        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+          <button onClick={searchPatient} disabled={loading}>Search</button>
+          <button onClick={addPatient} disabled={loading}>Add Patient</button>
+        </div>
+        {patients.length > 0 && (
+          <select className="input" value={patientId} onChange={e => setPatientId(e.target.value)}>
+            <option value="">Select Patient</option>
+            {patients.map(p => (
+              <option key={p.id} value={p.id}>{p.name?.[0]?.text || `Patient ${p.id}`}</option>
+            ))}
+          </select>
+        )}
       </div>
-
-      <button onClick={loadAppointments} disabled={loading}>{loading ? "Loading..." : "Load Appointments"}</button>
-
+      <form onSubmit={book} className="card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxWidth: "450px" }}>
+        <select className="input" value={practitionerId} onChange={e => setPractitionerId(e.target.value)} required>
+          <option value="">Select Doctor</option>
+          {practitioners.map(d => (
+            <option key={d.id} value={d.id}>{d.name?.[0]?.text || `Doctor ${d.id}`}</option>
+          ))}
+        </select>
+        <input className="input" type="datetime-local" value={date} onChange={e => setDate(e.target.value)} required />
+        <textarea className="input" placeholder="Reason" value={reason} onChange={e => setReason(e.target.value)} required />
+        <button type="submit" disabled={loading}>{loading ? "Booking..." : "Book"}</button>
+      </form>
       {err && <div className="error">{err}</div>}
-      {appointments.length === 0 && !loading && !err && <div className="empty">No appointments found.</div>}
-
-      {appointments.map(a => {
-        const appt = a.resource;
-        return (
-          <div key={appt.id} className="card">
-            <div><b>ID:</b> {appt.id}</div>
-            <div><b>Start:</b> {appt.start}</div>
-            <div><b>End:</b> {appt.end}</div>
-            <div><b>Status:</b> {appt.status}</div>
-            <button onClick={() => rescheduleAppointment(appt.id)}>Reschedule</button>
-            <button onClick={() => cancelAppointment(appt.id)}>Cancel</button>
-          </div>
-        );
-      })}
+      {apptId && (
+        <div className="card" style={{ marginTop: "1rem" }}>
+          <div><b>ID:</b> {apptId}</div>
+          <div><b>Status:</b> {status}</div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,18 @@
-export async function proxyRequest(path, method = "GET", data) {
+export async function proxyRequest(path, method = "GET", body = null) {
   const res = await fetch("/api/proxy", {
-    method: "POST",
+    method: "POST", 
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, method, data }),
+    body: JSON.stringify({ path, method, body }),
   });
-  if (!res.ok) throw new Error(await res.text() || "Request failed");
+
+  if (!res.ok) {
+    let errMsg = `HTTP ${res.status}`;
+    try {
+      const errData = await res.json();
+      errMsg = errData.error || errMsg;
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+
   return res.json();
 }

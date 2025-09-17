@@ -1,24 +1,41 @@
-import axios from "axios";
+import { NextResponse } from "next/server";
+
+const FHIR_BASE_URL = "https://hapi.fhir.org/baseR4"; 
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const { path, method = "GET", data } = body;
+    const { path, method, body } = await req.json();
 
-    if (!path) return new Response(JSON.stringify({ error: "Missing path" }), { status: 400 });
+    if (!path || !method) {
+      return NextResponse.json({ error: "Missing path or method" }, { status: 400 });
+    }
 
-    const url = `${process.env.NEXT_PUBLIC_MODMED_BASE_URL}/${process.env.NEXT_PUBLIC_MODMED_FIRM_PREFIX}/${path}`;
+    const url = `${FHIR_BASE_URL}/${path}`;
+    const options = {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: ["POST", "PUT"].includes(method) ? JSON.stringify(body) : undefined,
+    };
 
-    const response = await axios({
-      url,
-      method: method.toLowerCase(),
-      headers: { "x-api-key": process.env.MODMED_API_KEY, Accept: "application/json" },
-      auth: { username: process.env.MODMED_USERNAME, password: process.env.MODMED_PASSWORD },
-      data,
-    });
+    const res = await fetch(url, options);
+    const text = await res.text();
 
-    return new Response(JSON.stringify(response.data), { status: response.status });
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: data.issue?.[0]?.diagnostics || data || "FHIR request failed" },
+        { status: res.status }
+      );
+    }
+
+    return NextResponse.json(data);
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return NextResponse.json({ error: err.message || "Proxy error" }, { status: 500 });
   }
 }
